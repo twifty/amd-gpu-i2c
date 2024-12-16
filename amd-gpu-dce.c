@@ -9,55 +9,56 @@
 
 
  enum {
-    GPU_I2C_TIMEOUT_DELAY    = 1000,
-    GPU_I2C_TIMEOUT_INTERVAL = 10,
+     GPU_I2C_TIMEOUT_DELAY    = 1000,
+     GPU_I2C_TIMEOUT_INTERVAL = 10,
  };
 
  enum amd_i2c_result {
-    OPERATION_SUCCEEDED,
-    OPERATION_FAILED,
-    OPERATION_ENGINE_BUSY,
-    OPERATION_TIMEOUT,
-    OPERATION_NO_RESPONSE
+     I2C_CHANNEL_OPERATION_SUCCEEDED,
+     I2C_CHANNEL_OPERATION_FAILED,
+     I2C_CHANNEL_OPERATION_NOT_GRANTED,
+     I2C_CHANNEL_OPERATION_IS_BUSY,
+     I2C_CHANNEL_OPERATION_NO_HANDLE_PROVIDED,
+     I2C_CHANNEL_OPERATION_CHANNEL_IN_USE,
+     I2C_CHANNEL_OPERATION_CHANNEL_CLIENT_MAX_ALLOWED,
+     I2C_CHANNEL_OPERATION_ENGINE_BUSY,
+     I2C_CHANNEL_OPERATION_TIMEOUT,
+     I2C_CHANNEL_OPERATION_NO_RESPONSE,
+     I2C_CHANNEL_OPERATION_HW_REQUEST_I2C_BUS,
+     I2C_CHANNEL_OPERATION_WRONG_PARAMETER,
+     I2C_CHANNEL_OPERATION_OUT_NB_OF_RETRIES,
+     I2C_CHANNEL_OPERATION_NOT_STARTED
  };
 
- static const char *amd_i2c_result_str[] = {
-    "OPERATION_SUCCEEDED",
-    "OPERATION_FAILED",
-    "OPERATION_ENGINE_BUSY",
-    "OPERATION_TIMEOUT",
-    "OPERATION_NO_RESPONSE"
+ enum amd_i2c_action {
+     DCE_I2C_TRANSACTION_ACTION_I2C_WRITE = 0x00,
+     DCE_I2C_TRANSACTION_ACTION_I2C_READ = 0x10,
+     DCE_I2C_TRANSACTION_ACTION_I2C_STATUS_REQUEST = 0x20,
+
+     DCE_I2C_TRANSACTION_ACTION_I2C_WRITE_MOT = 0x40,
+     DCE_I2C_TRANSACTION_ACTION_I2C_READ_MOT = 0x50,
+     DCE_I2C_TRANSACTION_ACTION_I2C_STATUS_REQUEST_MOT = 0x60,
+
+     DCE_I2C_TRANSACTION_ACTION_DP_WRITE = 0x80,
+     DCE_I2C_TRANSACTION_ACTION_DP_READ = 0x90
  };
 
-// enum amd_i2c_action {
-//     DCE_I2C_TRANSACTION_ACTION_I2C_WRITE = 0x00,
-//     DCE_I2C_TRANSACTION_ACTION_I2C_READ = 0x10,
-//    // DCE_I2C_TRANSACTION_ACTION_I2C_STATUS_REQUEST = 0x20,
-//
-//     DCE_I2C_TRANSACTION_ACTION_I2C_WRITE_MOT = 0x40,
-//     DCE_I2C_TRANSACTION_ACTION_I2C_READ_MOT = 0x50,
-//    // DCE_I2C_TRANSACTION_ACTION_I2C_STATUS_REQUEST_MOT = 0x60,
-//
-//    // DCE_I2C_TRANSACTION_ACTION_DP_WRITE = 0x80,
-//    // DCE_I2C_TRANSACTION_ACTION_DP_READ = 0x90
-// };
-
-// enum amd_i2c_status {
-//     DC_I2C_STATUS__DC_I2C_STATUS_IDLE,
-//     DC_I2C_STATUS__DC_I2C_STATUS_USED_BY_SW,
-//     DC_I2C_STATUS__DC_I2C_STATUS_USED_BY_HW,
-//     DC_I2C_REG_RW_CNTL_STATUS_DMCU_ONLY = 2,
-// };
+ enum amd_i2c_status {
+     DC_I2C_STATUS__DC_I2C_STATUS_IDLE,
+     DC_I2C_STATUS__DC_I2C_STATUS_USED_BY_SW,
+     DC_I2C_STATUS__DC_I2C_STATUS_USED_BY_HW,
+     DC_I2C_REG_RW_CNTL_STATUS_DMCU_ONLY = 2,
+ };
 
 struct amd_dce_registers {
-    uint32_t SETUP;
-    uint32_t SPEED;
-    uint32_t STATUS;
-    uint32_t CONTROL;
-    uint32_t TRANSACTION;
-    uint32_t DATA;
-    uint32_t INTERRUPT_CONTROL;
-    uint32_t PIN_SELECTION;
+	uint32_t SETUP;
+	uint32_t SPEED;
+	uint32_t STATUS;
+	uint32_t CONTROL;
+	uint32_t TRANSACTION;
+	uint32_t DATA;
+	uint32_t INTERRUPT_CONTROL;
+	uint32_t PIN_SELECTION;
 };
 struct amd_dce_sh_mask {
     uint32_t GO;
@@ -97,6 +98,9 @@ struct amd_dce_sh_mask {
     uint32_t DONE_MASK;
 };
 
+
+
+
 struct dce_i2c_context {
     struct amd_gpu_i2c      gpu_context;
     struct amd_reg_service  *reg_service;
@@ -121,20 +125,20 @@ struct dce_i2c_context {
 )
 
 
-//struct amd_i2c_payload {
-//    bool        write;
-//    uint8_t     address;
-//    uint32_t    length;
-//    uint8_t     *data;
-// };
+struct amd_i2c_payload {
+ 	bool       write;
+ 	uint8_t    address;
+ 	uint32_t   length;
+ 	uint8_t    *data;
+ };
 
-//struct amd_i2c_transaction {
-//    //enum amd_i2c_action   action;
-//    //enum amd_i2c_result   status;
-//    uint8_t                address;
-//    uint32_t               length;
-//    uint8_t                *data;
-//};
+struct amd_i2c_transaction {
+	enum amd_i2c_action   action;
+	//enum amd_i2c_result   status;
+	uint8_t                address;
+	uint32_t               length;
+	uint8_t                *data;
+};
 
 
 static void clear_ack (
@@ -185,19 +189,15 @@ static void close_engine (
 
 static bool process_transaction (
     struct dce_i2c_context const *ctx,
-    //struct amd_i2c_transaction *request
-    struct i2c_msg *msg
+    struct amd_i2c_transaction *request
 ){
     struct amd_dce_registers const *reg = ctx->registers;
-    uint32_t length = msg->len;
-    uint8_t *buffer = msg->buf;
-    bool write = !(msg->flags & I2C_M_RD);
-    //uint32_t value = 0;
-
-    //write = !(msg->flags & I2C_M_RD);
+    uint32_t length = request->length;
+    uint8_t *buffer = request->data;
+    uint32_t value = 0;
 
     reg_update_ex(ctx->reg_service, reg->TRANSACTION, (struct reg_fields[]){
-        MS_WFIELDS(ctx, RW, write/*0 != (request->action & DCE_I2C_TRANSACTION_ACTION_I2C_READ)*/),
+        MS_WFIELDS(ctx, RW, 0 != (request->action & DCE_I2C_TRANSACTION_ACTION_I2C_READ)),
         MS_WFIELDS(ctx, STOP_ON_NACK, 1),
         MS_WFIELDS(ctx, ACK_ON_READ, 0),
         MS_WFIELDS(ctx, START, 1),
@@ -205,15 +205,15 @@ static bool process_transaction (
         MS_WFIELDS(ctx, COUNT, length),
     }, 6);
 
-    reg_set_ex(ctx->reg_service, reg->DATA, 0, (struct reg_fields[]){
+    value = reg_set_ex(ctx->reg_service, reg->DATA, 0, (struct reg_fields[]){
         MS_WFIELDS(ctx, DATA_RW, false),
-        MS_WFIELDS(ctx, DATA, msg->addr),
+        MS_WFIELDS(ctx, DATA, request->address),
         MS_WFIELDS(ctx, INDEX, 0),
         MS_WFIELDS(ctx, INDEX_WRITE, 1),
     }, 4);
 
-    //if (!(request->action & DCE_I2C_TRANSACTION_ACTION_I2C_READ)) {
-    if (write){
+    if (!(request->action & DCE_I2C_TRANSACTION_ACTION_I2C_READ)) {
+        // TODO this should auto increment
         uint8_t index = 1;
         while (length) {
             reg_set_ex(ctx->reg_service, reg->DATA, 0, (struct reg_fields[]){
@@ -241,12 +241,11 @@ static void execute_transaction (
 
 static void process_reply (
     struct dce_i2c_context *ctx,
-    struct i2c_msg *msg
-    //struct amd_i2c_payload *reply
+    struct amd_i2c_payload *reply
 ){
     struct amd_dce_registers const *reg = ctx->registers;
-    uint32_t length = msg->len;
-    uint8_t *buffer = msg->buf;
+    uint32_t length = reply->length;
+    uint8_t *buffer = reply->data;
     uint8_t index = 1;
     struct reg_fields data[] = {
         MS_WFIELDS(ctx, INDEX, 1),
@@ -278,21 +277,34 @@ static enum amd_i2c_result get_channel_status (
     struct reg_fields status = MS_WFIELDS(ctx, STATUS, 0);
     uint32_t value = reg_get_ex(ctx->reg_service, reg->STATUS, &status, 1);
 
-    //if (value & ctx->masks->DONE)
-    //    return OPERATION_SUCCEEDED;
-    if (status.value || value == 0)
-        return OPERATION_ENGINE_BUSY;
-    if (value & ctx->masks->STOPPED_ON_NACK || value & ctx->masks->NACK)
-        return OPERATION_NO_RESPONSE;
-    if (value & ctx->masks->TIMEOUT)
-        return OPERATION_TIMEOUT;
-    if (value & ctx->masks->ABORTED)
-        return OPERATION_FAILED;
+    if (status.value || value == 0) {
+        return I2C_CHANNEL_OPERATION_ENGINE_BUSY;
+    }
 
-    return OPERATION_SUCCEEDED;
+    if (value & ctx->masks->STOPPED_ON_NACK) {
+        return I2C_CHANNEL_OPERATION_NO_RESPONSE;
+    }
+
+    if (value & ctx->masks->TIMEOUT) {
+        return I2C_CHANNEL_OPERATION_TIMEOUT;
+    }
+
+    if (value & ctx->masks->ABORTED) {
+        return I2C_CHANNEL_OPERATION_FAILED;
+    }
+
+    if (value & ctx->masks->DONE) {
+        return I2C_CHANNEL_OPERATION_SUCCEEDED;
+    }
+
+    if (value & ctx->masks->NACK) {
+        return I2C_CHANNEL_OPERATION_NO_RESPONSE;
+    }
+
+    return I2C_CHANNEL_OPERATION_SUCCEEDED;
 }
 
-static bool poll_engine (
+static enum amd_i2c_result poll_engine (
     struct dce_i2c_context *ctx
 ){
     enum amd_i2c_result result;
@@ -300,7 +312,7 @@ static bool poll_engine (
 
     do {
         result = get_channel_status(ctx);
-        if (result != OPERATION_ENGINE_BUSY)
+        if (result != I2C_CHANNEL_OPERATION_ENGINE_BUSY)
             break;
 
         udelay(ctx->timeout_delay);
@@ -308,80 +320,57 @@ static bool poll_engine (
 
     clear_ack(ctx);
 
-    switch (result) {
-    case OPERATION_SUCCEEDED:
-        return true;
-
-    case OPERATION_FAILED:
-    case OPERATION_ENGINE_BUSY:
-    case OPERATION_TIMEOUT:
-    case OPERATION_NO_RESPONSE:
-        I2C_DBG("Poll failed with: %s", amd_i2c_result_str[result]);
-        break;
-    }
-
-    return false;
+    return timeout != 0 ? result : I2C_CHANNEL_OPERATION_TIMEOUT;
 }
 
 
-//static bool submit_transaction (
-//    struct dce_i2c_context *ctx,
-//    struct amd_i2c_transaction *request
-//){
-//    if (!process_transaction(ctx, request)) {
-//        I2C_DBG("Failed to process transaction");
-//        return false;
-//    }
-//
-//    execute_transaction(ctx);
-//
-//    return true;
-//}
-
-static bool submit_payload (
+static bool submit_transaction (
     struct dce_i2c_context *ctx,
-    //struct amd_i2c_payload *payload,
-    struct i2c_msg *msg
-    //,
-    //bool middle_of_transaction
+    struct amd_i2c_transaction *request
 ){
-    //struct amd_i2c_transaction request;
-    //enum amd_i2c_result operation_result;
-    bool write;
-//
-    write = !(msg->flags & I2C_M_RD);
-//    if (!write) {
-//        request.action = middle_of_transaction ?
-//            DCE_I2C_TRANSACTION_ACTION_I2C_READ_MOT :
-//            DCE_I2C_TRANSACTION_ACTION_I2C_READ;
-//    } else {
-//        request.action = middle_of_transaction ?
-//            DCE_I2C_TRANSACTION_ACTION_I2C_WRITE_MOT :
-//            DCE_I2C_TRANSACTION_ACTION_I2C_WRITE;
-//    }
-//
-//    request.address = (uint8_t) ((payload->address << 1) | !payload->write);
-//    request.length  = payload->length;
-//    request.data    = payload->data;
-
-    //if (!submit_transaction(ctx, &request))
-    //    return false;
-
-    if (!process_transaction(ctx, msg)) {
+    if (!process_transaction(ctx, request)) {
         I2C_DBG("Failed to process transaction");
         return false;
     }
 
-    // Send GO
     execute_transaction(ctx);
 
+    return true;
+}
+
+static bool submit_payload (
+    struct dce_i2c_context *ctx,
+    struct amd_i2c_payload *payload,
+    bool middle_of_transaction
+){
+    struct amd_i2c_transaction request;
+    enum amd_i2c_result operation_result;
+    // uint32_t transaction_timeout;
+
+    if (!payload->write) {
+        request.action = middle_of_transaction ?
+            DCE_I2C_TRANSACTION_ACTION_I2C_READ_MOT :
+            DCE_I2C_TRANSACTION_ACTION_I2C_READ;
+    } else {
+        request.action = middle_of_transaction ?
+            DCE_I2C_TRANSACTION_ACTION_I2C_WRITE_MOT :
+            DCE_I2C_TRANSACTION_ACTION_I2C_WRITE;
+    }
+
+    request.address = (uint8_t) ((payload->address << 1) | !payload->write);
+    request.length  = payload->length;
+    request.data    = payload->data;
+
+    if (!submit_transaction(ctx, &request))
+        return false;
+
     /* wait until transaction proceed */
-    //operation_result = poll_engine(ctx);
+    operation_result = poll_engine(ctx);
 
     /* update transaction status */
-    if (poll_engine(ctx)) {
-        if (!write)
-            process_reply(ctx, msg);
+    if (operation_result == I2C_CHANNEL_OPERATION_SUCCEEDED) {
+        if (!(payload->write))
+            process_reply(ctx, payload);
 
         return true;
     }
@@ -410,98 +399,100 @@ static const struct amd_dce_registers dce_12_X = {
     .PIN_SELECTION      = 0x34c0 + 0x15ab,
 };
 static const struct amd_dce_sh_mask dce_masks = {
-    .GO                             = 0x1,
-    .SOFT_RESET                     = 0x2,
-    .SEND_RESET                     = 0x4,
-    .ENABLE                         = 0x8,
-    .STATUS                         = 0xf,
-    .DONE                           = 0x10,
-    .ABORTED                        = 0x20,
-    .TIMEOUT                        = 0x40,
-    .STOPPED_ON_NACK                = 0x200,
-    .NACK                           = 0x400,
-    .THRESHOLD                      = 0x3,
-    .DISABLE_FILTER_DURING_STALL    = 0x10,
-    .START_STOP_TIMING_CNTL         = 0x300,
-    .PRESCALE                       = 0xffff0000,
-    .DATA_DRIVE_EN                  = 0x1,
-    .DATA_DRIVE_SEL                 = 0x2,
-    .CLK_DRIVE_EN                   = 0x80,
-    .INTRA_BYTE_DELAY               = 0xff00,
-    .TIME_LIMIT                     = 0xff000000,
-    .RW                             = 0x1,
-    .STOP_ON_NACK                   = 0x100,
-    .ACK_ON_READ                    = 0x200,
-    .START                          = 0x1000,
-    .STOP                           = 0x2000,
-    .COUNT                          = 0xf0000,
-    .DATA_RW                        = 0x1,
-    .DATA                           = 0xff00,
-    .INDEX                          = 0xf0000,
-    .INDEX_WRITE                    = 0x80000000,
-    .SDA_PIN_SEL                    = 0x7f00,
-    .SCL_PIN_SEL                    = 0x7f,
-    .DONE_INT                       = 0x1,
-    .DONE_ACK                       = 0x2,
-    .DONE_MASK                      = 0x4,
+    .GO = 0x1,
+    .SOFT_RESET = 0x2,
+    .SEND_RESET = 0x4,
+    .ENABLE = 0x8,
+    .STATUS = 0xf,
+    .DONE = 0x10,
+    .ABORTED = 0x20,
+    .TIMEOUT = 0x40,
+    .STOPPED_ON_NACK = 0x200,
+    .NACK = 0x400,
+    .THRESHOLD = 0x3,
+    .DISABLE_FILTER_DURING_STALL = 0x10,
+    .START_STOP_TIMING_CNTL = 0x300,
+    .PRESCALE = 0xffff0000,
+    .DATA_DRIVE_EN = 0x1,
+    .DATA_DRIVE_SEL = 0x2,
+    .CLK_DRIVE_EN = 0x80,
+    .INTRA_BYTE_DELAY = 0xff00,
+    .TIME_LIMIT = 0xff000000,
+    .RW = 0x1,
+    .STOP_ON_NACK = 0x100,
+    .ACK_ON_READ = 0x200,
+    .START = 0x1000,
+    .STOP = 0x2000,
+    .COUNT = 0xf0000,
+    .DATA_RW = 0x1,
+    .DATA = 0xff00,
+    .INDEX = 0xf0000,
+    .INDEX_WRITE = 0x80000000,
+    .SDA_PIN_SEL = 0x7f00,
+    .SCL_PIN_SEL = 0x7f,
+    .DONE_INT = 0x1,
+    .DONE_ACK = 0x2,
+    .DONE_MASK = 0x4,
 };
 static const struct amd_dce_sh_mask dce_shifts = {
-    .GO                             = 0x0,
-    .SOFT_RESET                     = 0x1,
-    .SEND_RESET                     = 0x2,
-    .ENABLE                         = 0x3,
-    .STATUS                         = 0x0,
-    .DONE                           = 0x4,
-    .ABORTED                        = 0x5,
-    .TIMEOUT                        = 0x6,
-    .STOPPED_ON_NACK                = 0x9,
-    .NACK                           = 0xa,
-    .THRESHOLD                      = 0x0,
-    .DISABLE_FILTER_DURING_STALL    = 0x4,
-    .START_STOP_TIMING_CNTL         = 0x8,
-    .PRESCALE                       = 0x10,
-    .DATA_DRIVE_EN                  = 0x0,
-    .DATA_DRIVE_SEL                 = 0x1,
-    .CLK_DRIVE_EN                   = 0x7,
-    .INTRA_BYTE_DELAY               = 0x8,
-    .TIME_LIMIT                     = 0x18,
-    .RW                             = 0x0,
-    .STOP_ON_NACK                   = 0x8,
-    .ACK_ON_READ                    = 0x9,
-    .START                          = 0xc,
-    .STOP                           = 0xd,
-    .COUNT                          = 0x10,
-    .DATA_RW                        = 0x0,
-    .DATA                           = 0x8,
-    .INDEX                          = 0x10,
-    .INDEX_WRITE                    = 0x1f,
-    .SDA_PIN_SEL                    = 0x8,
-    .SCL_PIN_SEL                    = 0x0,
-    .DONE_INT                       = 0x0,
-    .DONE_ACK                       = 0x1,
-    .DONE_MASK                      = 0x2,
+    .GO = 0x0,
+    .SOFT_RESET = 0x1,
+    .SEND_RESET = 0x2,
+    .ENABLE = 0x3,
+    .STATUS = 0x0,
+    .DONE = 0x4,
+    .ABORTED = 0x5,
+    .TIMEOUT = 0x6,
+    .STOPPED_ON_NACK = 0x9,
+    .NACK = 0xa,
+    .THRESHOLD = 0x0,
+    .DISABLE_FILTER_DURING_STALL = 0x4,
+    .START_STOP_TIMING_CNTL = 0x8,
+    .PRESCALE = 0x10,
+    .DATA_DRIVE_EN = 0x0,
+    .DATA_DRIVE_SEL = 0x1,
+    .CLK_DRIVE_EN = 0x7,
+    .INTRA_BYTE_DELAY = 0x8,
+    .TIME_LIMIT = 0x18,
+    .RW = 0x0,
+    .STOP_ON_NACK = 0x8,
+    .ACK_ON_READ = 0x9,
+    .START = 0xc,
+    .STOP = 0xd,
+    .COUNT = 0x10,
+    .DATA_RW = 0x0,
+    .DATA = 0x8,
+    .INDEX = 0x10,
+    .INDEX_WRITE = 0x1f,
+    .SDA_PIN_SEL = 0x8,
+    .SCL_PIN_SEL = 0x0,
+    .DONE_INT = 0x0,
+    .DONE_ACK = 0x1,
+    .DONE_MASK = 0x2,
 };
+
+
 
 static int amd_gpu_dce_xfer(
     struct amd_gpu_i2c *gpu,
-    struct i2c_msg *msgs,
+	struct i2c_msg *msgs,
     int num
 ){
     struct dce_i2c_context *ctx = dce_from_gpu(gpu);
-    //struct amd_i2c_payload payload;
-    bool result = true;
+    struct amd_i2c_payload payload;
+    bool mot, result = true;
     int i;
 
     open_engine(ctx);
 
     for (i = 0; i < num; i++) {
-        //bool mot = (i != num - 1);
-        //payload.write   = !(msgs[i].flags & I2C_M_RD);
-        //payload.address = msgs[i].addr;
-        //payload.length  = msgs[i].len;
-        //payload.data    = msgs[i].buf;
+        mot = (i != num - 1);
+        payload.write   = !(msgs[i].flags & I2C_M_RD);
+        payload.address = msgs[i].addr;
+        payload.length  = msgs[i].len;
+        payload.data    = msgs[i].buf;
 
-        if (!submit_payload(ctx, &msgs[i])) {
+        if (!submit_payload(ctx, &payload, mot)) {
             result = false;
             break;
         }
@@ -515,7 +506,7 @@ static int amd_gpu_dce_xfer(
 static void amd_gpu_dce_destroy (
     struct amd_gpu_i2c *gpu
 ){
-    struct dce_i2c_context *context = dce_from_gpu(gpu);
+	struct dce_i2c_context *context = dce_from_gpu(gpu);
 
     kfree(context);
 }
@@ -558,12 +549,12 @@ struct amd_gpu_i2c *amd_gpu_dce_create (
     const struct amd_pci_asic *asic,
     struct amd_reg_service *reg_service
 ){
-    struct dce_i2c_context *context;
+	struct dce_i2c_context *context;
 
-    context = kzalloc(sizeof(struct dce_i2c_context), GFP_KERNEL);
+	context = kzalloc(sizeof(struct dce_i2c_context), GFP_KERNEL);
     if (!context)
         return ERR_PTR(-ENOMEM);
-    
+	
     if (!dce_i2c_init(asic->type, context)) {
         kfree(context);
         return NULL;
@@ -571,5 +562,6 @@ struct amd_gpu_i2c *amd_gpu_dce_create (
 
     context->reg_service = reg_service;
 
-    return &context->gpu_context;
+	return &context->gpu_context;
 }
+
