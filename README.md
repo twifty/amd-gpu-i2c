@@ -23,7 +23,7 @@ Clone the repo into a github directory in your home folder:
 mkdir github
 cd github
 git clone https://github.com/twifty/amd-gpu-i2c.git
-cd aura-gpu
+cd amd-gpu-i2c
 ```
 Then run:
 ```
