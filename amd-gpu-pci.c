@@ -59,6 +59,7 @@ uint32_t find_pci_devices (
     while (NULL != (pci_dev = pci_get_device(PCI_ANY_ID, PCI_ANY_ID, pci_dev))) {
         match = pci_match_id(pciidlist, pci_dev);
         if (match && count < len) {
+            // TODO - pci_dev should be private to this function
             entries[count].pci = pci_dev;
             entries[count].asic.type = match->driver_data;
 

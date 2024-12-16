@@ -8,8 +8,8 @@
 #include "amd-pci-ids.h"
 
 struct amd_pci_entry {
-    struct amd_pci_asic    asic;
-    struct pci_dev          *pci;
+    struct amd_pci_asic asic;
+    struct pci_dev      *pci;
 };
 
 uint32_t find_pci_devices (

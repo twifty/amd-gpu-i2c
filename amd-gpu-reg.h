@@ -7,10 +7,10 @@
 #include "include/types.h"
 
 struct reg_fields {
-    uint32_t mask;
-    uint32_t value;
-    uint8_t  shift;
-    uint32_t *read;
+    uint32_t    mask;
+    uint32_t    value;
+    uint8_t     shift;
+    uint32_t    *read;
 };
 
 struct amd_reg_service {

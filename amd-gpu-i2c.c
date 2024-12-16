@@ -7,25 +7,23 @@
 
 static int amd_gpu_i2c_xfer(
     struct i2c_adapter *i2c_adap,
-	struct i2c_msg *msgs,
+    struct i2c_msg *msgs,
     int num
 ){
     struct amd_gpu_i2c_context *context = i2c_get_adapdata(i2c_adap);
     
     return context->gpu_ctx->funcs->transfer(context->gpu_ctx, msgs, num);
-
-	return -EIO;
 }
 
 static uint32_t amd_gpu_i2c_func(
     struct i2c_adapter *adap
 ){
-	return I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL;
+    return I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL;
 }
 
 static const struct i2c_algorithm amdgpu_dm_i2c_algo = {
-	.master_xfer   = amd_gpu_i2c_xfer,
-	.functionality = amd_gpu_i2c_func,
+    .master_xfer   = amd_gpu_i2c_xfer,
+    .functionality = amd_gpu_i2c_func,
 };
 
 void amd_gpu_i2c_destroy_context (
@@ -49,10 +47,10 @@ struct amd_gpu_i2c_context *amd_gpu_i2c_create_context(
     const struct amd_pci_entry *const gpu,
     uint8_t index
 ){
-	struct amd_gpu_i2c_context *context;
+    struct amd_gpu_i2c_context *context;
     error_t err;
 
-	context = kzalloc(sizeof(struct amd_gpu_i2c_context), GFP_KERNEL);
+    context = kzalloc(sizeof(struct amd_gpu_i2c_context), GFP_KERNEL);
     if (!context)
         return ERR_PTR(-ENOMEM);
 
@@ -93,24 +91,21 @@ struct amd_gpu_i2c_context *amd_gpu_i2c_create_context(
     }
     
     context->adapter.owner = THIS_MODULE;
-	context->adapter.algo = &amdgpu_dm_i2c_algo;
+    context->adapter.algo = &amdgpu_dm_i2c_algo;
     context->adapter.dev.parent = &gpu->pci->dev;
 
-	snprintf(context->adapter.name, sizeof(context->adapter.name),
+    snprintf(context->adapter.name, sizeof(context->adapter.name),
         "AMD-GPU-I2C hidden bus %d", index);
 
-	i2c_set_adapdata(&context->adapter, context);
+    i2c_set_adapdata(&context->adapter, context);
     i2c_add_adapter(&context->adapter);
 
-	context->registered = true;
+    context->registered = true;
 
-	return context;
+    return context;
 
 error_free_all:
     amd_gpu_i2c_destroy_context(context);
 
     return ERR_PTR(err);
 }
-
-
-

@@ -4,11 +4,11 @@
 #include "include/debug.h"
 #include "amd-gpu-reg.h"
 
-#define mmMM_INDEX            0x0000
-#define mmMM_DATA             0x0001
+#define mmMM_INDEX  0x0000
+#define mmMM_DATA   0x0001
 
 struct amd_reg_context {
-    struct amd_reg_service service;
+    struct amd_reg_service  service;
     spinlock_t              lock;
     resource_size_t         base;
     resource_size_t         size;
@@ -17,20 +17,20 @@ struct amd_reg_context {
     struct pci_dev          *pci_dev;
 };
 
-#if defined(DEBUG_GPU_REG)
-
-#define log_reg_read(_reg, _value)\
-    AURA_DBG("Reg Read: %s %x", reg_name(_reg), _value);
-
-#define log_reg_write(_reg, _value)\
-    AURA_DBG("Reg Write: %s %x", reg_name(_reg), _value);
-
-#else
-
-#define log_reg_read(_reg, _value)
-#define log_reg_write(_reg, _value)
-
-#endif
+//#if defined(DEBUG_GPU_REG)
+//
+//#define log_reg_read(_reg, _value)
+//    AURA_DBG("Reg Read: %s %x", reg_name(_reg), _value);
+//
+//#define log_reg_write(_reg, _value)
+//    AURA_DBG("Reg Write: %s %x", reg_name(_reg), _value);
+//
+//#else
+//
+//#define log_reg_read(_reg, _value)
+//#define log_reg_write(_reg, _value)
+//
+//#endif
 
 int32_t reg_read (
     struct amd_reg_service *service,
@@ -55,8 +55,6 @@ int32_t reg_read (
         spin_unlock_irqrestore(&ctx->lock, flags);
     }
 
-    log_reg_read(reg, ret);
-
     return ret;
 }
 
@@ -72,7 +70,7 @@ void reg_write (
         return;
     }
 
-    log_reg_write(reg, value);
+    //log_reg_write(reg, value);
 
     if ((reg * 4) < ctx->size)
         writel(value, ((void __iomem *)ctx->data) + (reg * 4));
