@@ -561,6 +561,8 @@ struct amd_gpu_i2c *amd_gpu_dce_create (
     }
 
     context->reg_service = reg_service;
+    context->timeout_delay      = GPU_I2C_TIMEOUT_DELAY;
+    context->timeout_interval   = GPU_I2C_TIMEOUT_INTERVAL;
 
 	return &context->gpu_context;
 }
